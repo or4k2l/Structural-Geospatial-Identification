@@ -19,12 +19,14 @@ import numpy as np
 #   Car engine idle: 4-cyl, 600 RPM              → ~5 Hz
 #   Truck diesel:    6-cyl, 800 RPM              → ~8 Hz
 #   Drone rotor:     DJI Mini series specs        → ~50 Hz
+#   vib_amp values calibrated against PVS dataset (Menegazzo, 2020)
+#   real road surface vibration (mixed asphalt/cobblestone/dirt)
 
 MOTION_PARAMS = {
     'human':   (1.4,  0.30, 0.05, 0.03, 1.8,  0.08, 15.0),
-    'bicycle': (4.5,  0.80, 0.10, 0.05, 2.5,  0.04,  8.0),
-    'car':     (13.9, 2.00, 0.80, 0.40, 5.0,  0.02,  5.0),
-    'truck':   (16.7, 1.50, 0.40, 0.20, 8.0,  0.05,  2.0),
+    'bicycle': (4.5,  0.80, 0.10, 0.05, 2.5,  0.06,  8.0),  # slight increase
+    'car':     (13.9, 2.00, 0.80, 0.40, 5.0,  0.12,  5.0),  # 0.02 → 0.12
+    'truck':   (16.7, 1.50, 0.40, 0.20, 8.0,  0.20,  2.0),  # 0.05 → 0.20
     'drone':   (8.0,  1.50, 0.60, 0.60, 50.0, 0.03, 25.0),
 }
 
@@ -72,9 +74,11 @@ def generate_window(obj_class: str,
     # Lateral acceleration
     a_lat = at_s * rng.standard_normal(N)
 
-    # Vertical vibration — characteristic frequency fingerprint
-    a_vert = (va * np.sin(2 * np.pi * vf * t + ph)
-              + 0.4 * va * rng.standard_normal(N))
+    # Vertical vibration: dominant frequency + 2nd harmonic + broadband road noise
+    # Calibrated against PVS dataset (Brazil, mixed road surfaces, 100 Hz)
+    a_vert = (va * np.sin(2 * np.pi * vf * t + ph)          # dominant frequency
+              + 0.5 * va * np.sin(2 * np.pi * vf * 2 * t)   # 2nd harmonic
+              + 0.8 * va * rng.standard_normal(N))            # broadband road noise
 
     # Yaw rate
     omega_z = np.deg2rad(hs) * rng.standard_normal(N)
@@ -115,7 +119,7 @@ def generate_dataset(n_per_class: int = 300,
 
     Returns
     -------
-    X : np.ndarray (N_total, 12)
+    X : np.ndarray (N_total, 11)
     y : np.ndarray (N_total,) of str labels
     """
     from sgi._internal.features import SGIFeatureExtractor
