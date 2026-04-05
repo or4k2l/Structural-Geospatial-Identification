@@ -180,6 +180,19 @@ class TestGenerator:
         for cls in DEFAULT_CLASSES:
             assert cls in y
 
+    def test_car_vib_amp_realistic(self):
+        """car a_vert std must reflect real road surface noise (PVS calibration)"""
+        w = generate_window('car', seed=42)
+        assert np.std(w['a_vert']) > 0.05, \
+            f"car a_vert std too low: {np.std(w['a_vert']):.4f} — road noise not modelled"
+
+    def test_truck_vib_amp_gt_car(self):
+        """truck a_vert std must exceed car (heavier vehicle, rougher vibration)"""
+        car_w   = generate_window('car',   seed=42)
+        truck_w = generate_window('truck', seed=42)
+        assert np.std(truck_w['a_vert']) > np.std(car_w['a_vert']), \
+            "truck a_vert std should exceed car"
+
 
 # ── Classifier tests ──────────────────────────────────────────────────────────
 
