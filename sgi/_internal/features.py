@@ -3,11 +3,13 @@ sgi._internal.features
 ──────────────────────
 Feature extraction from GPS+IMU sensor windows.
 
-12 physically motivated features, all computable on edge hardware
+11 physically motivated features, all computable on edge hardware
 (ESP32, Raspberry Pi).
 
 Author: Yahya Akbay | 2025
 """
+
+import warnings
 
 import numpy as np
 from scipy.signal import welch
@@ -26,7 +28,6 @@ FEATURE_NAMES = [
     'jerk_rms',      # jerk RMS [m/s³]
     'vib_freq',      # dominant vertical vibration frequency [Hz]
     'vib_amp',       # vertical vibration PSD peak [m²/s⁴/Hz]
-    'vib_bandwidth', # half-power bandwidth of vib peak [Hz]
     'heading_rms',   # heading rate RMS [deg/s]
     'omega_rms',     # yaw rate RMS [rad/s]
     'ke_proxy',      # kinetic energy proxy: mean(v²) [m²/s²]
@@ -60,7 +61,8 @@ class SGIFeatureExtractor:
         Extract features from a window dict.
 
         Expected keys:
-            velocity      : np.ndarray [m/s]
+            velocity      : np.ndarray [m/s]  — real GPS-derived speed (required
+                            for vehicle classification; see GPS Velocity note below)
             a_long        : np.ndarray [m/s²]  (longitudinal)
             a_lat         : np.ndarray [m/s²]  (lateral)
             a_vert        : np.ndarray [m/s²]  (vertical, gravity-removed)
@@ -70,7 +72,13 @@ class SGIFeatureExtractor:
 
         Returns
         -------
-        np.ndarray of shape (12,), dtype float32
+        np.ndarray of shape (11,), dtype float32
+
+        Note: GPS Velocity
+        ------------------
+        SGI is a GPS+IMU classifier. The ``velocity`` field must contain real
+        GPS-derived speed in m/s. Using integrated acceleration as a velocity
+        proxy will yield poor accuracy for vehicle classes (car, truck, bicycle).
         """
         v   = np.asarray(window['velocity'],     dtype=float)
         al  = np.asarray(window['a_long'],       dtype=float)
@@ -80,9 +88,22 @@ class SGIFeatureExtractor:
         hr  = np.asarray(window['heading_rate'], dtype=float)
         fs  = float(window.get('fs', self.fs))
 
+        v_mean_val = float(np.mean(v))
+        v_std_val  = float(np.std(v))
+        if v_std_val < 0.1 and v_mean_val < 0.5:
+            warnings.warn(
+                f"SGIFeatureExtractor: 'velocity' appears to be constant or "
+                f"near-zero (mean={v_mean_val:.3f}, std={v_std_val:.3f}). "
+                "SGI requires real GPS-derived speed for vehicle classification "
+                "(car, truck, bicycle). Using integrated acceleration as velocity "
+                "proxy will result in poor accuracy for non-human classes.",
+                UserWarning,
+                stacklevel=2,
+            )
+
         # Velocity
-        v_mean = float(np.mean(v))
-        v_std  = float(np.std(v))
+        v_mean = v_mean_val
+        v_std  = v_std_val
         v_max  = float(np.max(v))
 
         # Acceleration
@@ -97,10 +118,6 @@ class SGIFeatureExtractor:
         vib_freq   = float(freqs[peak_idx])
         vib_amp    = float(psd[peak_idx])
 
-        half_power = psd[peak_idx] / 2.0
-        above      = freqs[psd >= half_power]
-        vib_bw     = float(above[-1] - above[0]) if len(above) > 1 else 0.0
-
         # Heading / yaw
         heading_rms = float(np.sqrt(np.mean(hr**2)))
         omega_rms   = float(np.sqrt(np.mean(oz**2)))
@@ -111,13 +128,13 @@ class SGIFeatureExtractor:
         return np.array([
             v_mean, v_std, v_max,
             a_long_rms, a_lat_rms, jerk_rms,
-            vib_freq, vib_amp, vib_bw,
+            vib_freq, vib_amp,
             heading_rms, omega_rms,
             ke_proxy,
         ], dtype=np.float32)
 
     def extract_batch(self, windows: list) -> np.ndarray:
-        """Extract features from a list of window dicts. Returns (N, 12)."""
+        """Extract features from a list of window dicts. Returns (N, 11)."""
         return np.array([self.extract(w) for w in windows], dtype=np.float32)
 
     def extract_dataframe(self, df) -> np.ndarray:
