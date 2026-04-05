@@ -20,7 +20,7 @@ pip install sgi-machine
 Or from source:
 
 ```bash
-git clone https://github.com/yahyaakbay/sgi-machine
+git clone https://github.com/or4k2l/Structural-Geospatial-Identification
 cd sgi-machine
 pip install -e .
 ```
@@ -192,7 +192,7 @@ If you can build a GPS+IMU prototype on a Raspberry Pi or ESP32 — let's build 
   author  = {Akbay, Yahya},
   title   = {sgi-machine: Structural Geospatial Identification},
   year    = {2025},
-  url     = {https://github.com/yahyaakbay/sgi-machine},
+  url     = {https://github.com/or4k2l/Structural-Geospatial-Identification},
   version = {1.0.0}
 }
 ```
