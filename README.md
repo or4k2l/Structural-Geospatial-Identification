@@ -21,7 +21,7 @@ Or from source:
 
 ```bash
 git clone https://github.com/or4k2l/Structural-Geospatial-Identification
-cd sgi-machine
+cd Structural-Geospatial-Identification
 pip install -e .
 ```
 
@@ -105,7 +105,7 @@ sgi/
 └── models/
     └── sgi_light_v1.pkl ← bundled pretrained model (after sgi.train().save())
 tests/
-└── test_sgi.py          ← 36 tests, all passing
+└── test_sgi.py          ← 37 tests, all passing
 ```
 
 ---

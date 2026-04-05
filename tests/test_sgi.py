@@ -211,6 +211,25 @@ class TestClassifier:
         w      = generate_window('drone', seed=99)
         assert trained_clf.predict(w) == loaded.predict(w)
 
+    def test_evaluate_returns_array(self, trained_clf):
+        scores = trained_clf.evaluate(n_per_class=20, cv=3, verbose=False)
+        assert isinstance(scores, np.ndarray)
+        assert len(scores) == 3
+        assert all(0.0 <= s <= 1.0 for s in scores)
+        assert trained_clf.cv_scores_ is not None
+
+    def test_summary_runs(self, trained_clf, capsys):
+        trained_clf.summary()
+        out = capsys.readouterr().out
+        assert 'SGI-Light' in out
+
+    def test_predict_batch(self, trained_clf):
+        windows = [generate_window(c, seed=i+100) for i, c in enumerate(DEFAULT_CLASSES)]
+        results = trained_clf.predict_batch(windows)
+        assert isinstance(results, list)
+        assert len(results) == len(DEFAULT_CLASSES)
+        assert all(r in DEFAULT_CLASSES for r in results)
+
 
 # ── Top-level API tests ───────────────────────────────────────────────────────
 

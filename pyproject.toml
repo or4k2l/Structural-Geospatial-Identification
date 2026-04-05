@@ -37,3 +37,6 @@ full = ["pandas", "matplotlib"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["sgi*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

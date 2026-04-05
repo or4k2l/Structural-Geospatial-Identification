@@ -10,7 +10,7 @@
 - `generate_window / generate_dataset` — synthetic GPS+IMU data
 - Save / load trained models via joblib
 - Input: dict, numpy (N,6), pandas DataFrame
-- 36 tests, 100% passing
+- 37 tests, 100% passing
 
 **SGI-Full (theoretical, physics API)**
 - `k_amplitude()` — K-field amplitude in SI units

@@ -78,13 +78,13 @@ class SGILightClassifier:
 
     # ── Training ──────────────────────────────────────────────────────────────
 
-    def train(self, n_per_class: int = 300, verbose: bool = True) -> 'SGILightClassifier':
+    def train(self, n_per_class: int = 500, verbose: bool = True) -> 'SGILightClassifier':
         """
         Generate synthetic training data and fit the classifier.
 
         Parameters
         ----------
-        n_per_class : int   — samples per class
+        n_per_class : int   — samples per class (default 500)
         verbose     : bool  — print progress
 
         Returns
@@ -257,7 +257,7 @@ class SGILightClassifier:
             raise FileNotFoundError(
                 f"No model found at '{path}'. "
                 "Call SGILightClassifier().train().save() first, "
-                "or use sgi.load_pretrained()."
+                "or use sgi.load()."
             )
         data = joblib.load(path)
         obj  = cls(classes=data['classes'], fs=data['fs'])
