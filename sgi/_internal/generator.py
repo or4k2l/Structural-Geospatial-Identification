@@ -19,15 +19,15 @@ import numpy as np
 #   Car engine idle: 4-cyl, 600 RPM              → ~5 Hz
 #   Truck diesel:    6-cyl, 800 RPM              → ~8 Hz
 #   Drone rotor:     DJI Mini series specs        → ~50 Hz
-#   vib_amp values calibrated against PVS dataset (Menegazzo, 2020)
-#   real road surface vibration (mixed asphalt/cobblestone/dirt)
+#   truck v_mean calibrated to urban speed (~30 km/h = 8.3 m/s)
+#   Primary car/truck discriminator: velocity (not vibration amplitude)
 
 MOTION_PARAMS = {
-    'human':   (1.4,  0.30, 0.05, 0.03, 1.8,  0.08, 15.0),
-    'bicycle': (4.5,  0.80, 0.10, 0.05, 2.5,  0.06,  8.0),  # slight increase
-    'car':     (13.9, 2.00, 0.80, 0.40, 5.0,  0.12,  5.0),  # 0.02 → 0.12
-    'truck':   (16.7, 1.50, 0.40, 0.20, 8.0,  0.20,  2.0),  # 0.05 → 0.20
-    'drone':   (8.0,  1.50, 0.60, 0.60, 50.0, 0.03, 25.0),
+    'human':   (1.4,  0.30, 0.05, 0.03, 1.8,  0.08, 15.0),  # unchanged
+    'bicycle': (4.5,  0.80, 0.10, 0.05, 2.5,  0.04,  8.0),  # revert to original 0.04
+    'car':     (13.9, 2.00, 0.80, 0.40, 5.0,  0.02,  5.0),  # revert vib_amp to 0.02
+    'truck':   (8.3,  1.50, 0.40, 0.20, 8.0,  0.08,  2.0),  # v_mean: 16.7→8.3 (30km/h), vib_amp: 0.20→0.08
+    'drone':   (8.0,  1.50, 0.60, 0.60, 50.0, 0.03, 25.0),  # unchanged
 }
 
 DEFAULT_CLASSES = list(MOTION_PARAMS.keys())
