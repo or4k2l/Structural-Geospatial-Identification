@@ -14,8 +14,8 @@ from scipy.signal import welch
 
 # ── Default hardware parameters ───────────────────────────────────────────────
 DEFAULT_IMU_HZ    = 100   # ICM-42688-P typical rate
-DEFAULT_GPS_HZ    = 10    # u-blox NEO-M9N max rate
-DEFAULT_WINDOW_S  = 5     # classification window [seconds]
+DEFAULT_GPS_HZ    = 10    # u-blox NEO-M9N max rate (documented hardware constant, not used in computation)
+DEFAULT_WINDOW_S  = 5     # classification window [seconds] (documented hardware constant, not used in computation)
 
 FEATURE_NAMES = [
     'v_mean',        # mean forward velocity [m/s]
@@ -143,8 +143,10 @@ class SGIFeatureExtractor:
 
         Column order: [velocity, a_long, a_lat, a_vert, omega_z, heading_rate]
         """
-        assert arr.ndim == 2 and arr.shape[1] == 6, \
-            "Array must be shape (N, 6): [v, a_long, a_lat, a_vert, omega_z, heading_rate]"
+        if not (arr.ndim == 2 and arr.shape[1] == 6):
+            raise ValueError(
+                "Array must be shape (N, 6): [v, a_long, a_lat, a_vert, omega_z, heading_rate]"
+            )
         window = {
             'velocity':     arr[:, 0],
             'a_long':       arr[:, 1],

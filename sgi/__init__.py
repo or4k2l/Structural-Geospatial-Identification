@@ -44,11 +44,14 @@ _clf: SGILightClassifier | None = None
 
 
 def _get_or_train() -> SGILightClassifier:
-    """Return the module-level classifier, training it if necessary."""
+    """Return the module-level classifier, loading the bundled model or training if necessary."""
     global _clf
     if _clf is None or not _clf.is_trained:
-        _clf = SGILightClassifier()
-        _clf.train(verbose=False)
+        try:
+            _clf = SGILightClassifier.load()   # bundled model
+        except FileNotFoundError:
+            _clf = SGILightClassifier()
+            _clf.train(verbose=False)
     return _clf
 
 

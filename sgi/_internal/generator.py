@@ -55,33 +55,32 @@ def generate_window(obj_class: str,
         raise ValueError(f"Unknown class '{obj_class}'. "
                          f"Available: {list(MOTION_PARAMS.keys())}")
 
-    if seed is not None:
-        np.random.seed(seed)
+    rng = np.random.default_rng(seed)
 
     vm, vs, al_s, at_s, vf, va, hs = MOTION_PARAMS[obj_class]
     N  = int(duration * fs)
     t  = np.arange(N) / fs
-    ph = np.random.uniform(0, 2 * np.pi)
+    ph = rng.uniform(0, 2 * np.pi)
 
     # Forward velocity
-    v = np.clip(vm + vs * np.random.randn(N), 0.05, None)
+    v = np.clip(vm + vs * rng.standard_normal(N), 0.05, None)
 
     # Longitudinal acceleration
-    a_long = (al_s * np.random.randn(N)
+    a_long = (al_s * rng.standard_normal(N)
               + 0.3 * al_s * np.sin(2 * np.pi * 0.15 * t))
 
     # Lateral acceleration
-    a_lat = at_s * np.random.randn(N)
+    a_lat = at_s * rng.standard_normal(N)
 
     # Vertical vibration — characteristic frequency fingerprint
     a_vert = (va * np.sin(2 * np.pi * vf * t + ph)
-              + 0.4 * va * np.random.randn(N))
+              + 0.4 * va * rng.standard_normal(N))
 
     # Yaw rate
-    omega_z = np.deg2rad(hs) * np.random.randn(N)
+    omega_z = np.deg2rad(hs) * rng.standard_normal(N)
 
     # Heading rate
-    heading_rate = hs * np.random.randn(N)
+    heading_rate = hs * rng.standard_normal(N)
 
     return {
         'obj_class':    obj_class,

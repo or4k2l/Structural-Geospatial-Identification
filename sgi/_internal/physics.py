@@ -16,7 +16,7 @@ G_SI   = 6.674e-11   # m³/(kg·s²)
 C_SI   = 2.998e8     # m/s
 M_E    = 5.972e24    # kg  (Earth mass)
 R_E    = 6.371e6     # m   (Earth mean radius)
-N_A    = 6.022e23    # Avogadro's number
+N_A    = 6.022e23    # Avogadro's number (reserved for future molar mass calculations)
 
 # Derived
 R_S_EARTH = 2 * G_SI * M_E / C_SI**2       # Schwarzschild radius of Earth [m]
