@@ -8,6 +8,7 @@ Author: Yahya Akbay | 2025
 """
 
 import numpy as np
+import warnings
 import pytest
 
 import sgi
@@ -84,6 +85,7 @@ class TestFeatureExtractor:
         w    = generate_window('human', seed=42)
         feat = self.ext.extract(w)
         assert feat.shape == (len(FEATURE_NAMES),)
+        assert len(FEATURE_NAMES) == 11
 
     def test_output_dtype(self):
         w    = generate_window('car', seed=1)
@@ -95,6 +97,27 @@ class TestFeatureExtractor:
             w    = generate_window(cls, seed=0)
             feat = self.ext.extract(w)
             assert not np.any(np.isnan(feat)), f"NaN in {cls}"
+
+    def test_no_vib_bandwidth(self):
+        """vib_bandwidth must have been removed (dead feature, 0% importance)"""
+        assert 'vib_bandwidth' not in FEATURE_NAMES
+
+    def test_gps_velocity_warning_constant(self):
+        """Near-constant velocity should trigger a UserWarning"""
+        w = generate_window('human', seed=42)
+        # Override velocity with near-zero constant signal
+        n = len(w['velocity'])
+        w['velocity'] = np.zeros(n)
+        with pytest.warns(UserWarning, match="constant or near-zero"):
+            self.ext.extract(w)
+
+    def test_gps_velocity_no_warning_real(self):
+        """Real GPS velocity (non-constant) must NOT trigger a warning"""
+        w = generate_window('car', seed=42)
+        # car windows have realistic non-zero varying velocity
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            self.ext.extract(w)  # should not raise
 
     def test_vib_freq_drone(self):
         """Drone rotor should produce peak ~50 Hz"""

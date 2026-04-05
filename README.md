@@ -78,6 +78,42 @@ clf.predict(arr)
 
 **Pandas DataFrame** with the above column names.
 
+> **⚠️ GPS Velocity Required**  
+> `velocity` must be real GPS-derived speed in m/s. SGI is a **GPS + IMU classifier**.  
+> Passing a near-zero or constant velocity array will trigger a `UserWarning` and will
+> result in poor classification accuracy for all vehicle classes.
+
+---
+
+## Known Limitations
+
+| Limitation | Detail |
+|-----------|--------|
+| **GPS speed is mandatory** | `velocity` must come from real GPS (e.g. u-blox NEO-M9N). Integrated-acceleration proxies degrade vehicle-class accuracy to near-zero. |
+| **IMU-only mode** | Without real GPS speed, only the `human` class is reliably classified (~93%). All vehicle classes (`car`, `truck`, `bicycle`) collapse. |
+| **Synthetic training** | The classifier is trained on synthetic data. Cross-domain performance on real-world data depends on GPS availability. |
+
+### Real-World Validation — Collecty Dataset
+
+Experiment: SGI-Machine classifier trained on synthetic data, evaluated against the
+[Collecty dataset](https://doi.org/10.1016/j.dib.2023.109481)
+(Zagreb, Croatia, 100 Hz, 242 hours of labelled transport data) **without** real GPS speed.
+
+| Class | Accuracy | Note |
+|-------|----------|------|
+| `human` | 93.4% | ✅ IMU signal alone is sufficient |
+| `truck` | 12.4% | ⚠️ Requires GPS speed |
+| `car` | 1.0% | ❌ Requires GPS speed |
+| `bicycle` | 0.0% | ❌ Requires GPS speed |
+
+**Conclusion:** SGI achieves strong human-class accuracy from IMU alone, but reliable
+vehicle classification (`car`, `truck`, `bicycle`) requires real GPS-derived speed in
+the `velocity` field.
+
+> Erdelić, M., Erdelić, T., & Carić, T. (2023). Dataset for multimodal transport analytics
+> of smartphone users — Collecty. *Data in Brief*, 109481.
+> <https://doi.org/10.1016/j.dib.2023.109481>
+
 ---
 
 ## Object Classes
@@ -99,7 +135,7 @@ sgi/
 ├── __init__.py          ← public API: train, load, predict, predict_proba, info
 ├── classifier.py        ← SGILightClassifier
 ├── _internal/
-│   ├── features.py      ← SGIFeatureExtractor (12 features)
+│   ├── features.py      ← SGIFeatureExtractor (11 features)
 │   ├── generator.py     ← synthetic GPS+IMU data generator
 │   └── physics.py       ← SGI-Full: K-field, gap analysis (theoretical)
 └── models/

@@ -190,13 +190,13 @@ class SGILightClassifier:
             # pandas DataFrame
             return self.extractor.extract_dataframe(data)
         elif isinstance(data, np.ndarray):
-            if data.ndim == 1 and len(data) == 12:
+            if data.ndim == 1 and len(data) == len(FEATURE_NAMES):
                 return data.astype(np.float32)
             elif data.ndim == 2 and data.shape[1] == 6:
                 return self.extractor.extract_array(data)
             else:
                 raise ValueError(
-                    "numpy array must be shape (12,) [features] "
+                    f"numpy array must be shape ({len(FEATURE_NAMES)},) [features] "
                     "or (N,6) [raw sensor columns]"
                 )
         else:
