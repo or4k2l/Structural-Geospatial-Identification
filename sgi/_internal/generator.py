@@ -21,6 +21,9 @@ import numpy as np
 #   Drone rotor:     DJI Mini series specs        → ~50 Hz
 #   car/truck separation: multi-feature (vib_freq + a_long + heading_std + v_std)
 #   Calibrated against PVS dataset (Menegazzo, 2020) — real GPS validation
+#   Road noise model: broadband + periodic bumps + low-freq sway
+#   Calibrated against PVS dataset heading_rms distribution
+#   noise_amp=3.5 deg/s chosen so synthetic heading std ≈ PVS observed
 
 MOTION_PARAMS = {
     'human':   (1.4,  0.30, 0.05, 0.03, 1.8,  0.08, 15.0),  # unchanged
@@ -31,6 +34,27 @@ MOTION_PARAMS = {
 }
 
 DEFAULT_CLASSES = list(MOTION_PARAMS.keys())
+
+# ── Road surface noise parameters ─────────────────────────────────────────────
+# Class-independent: road surface affects all vehicle types equally.
+# Models three physical effects observed in PVS dataset (Brazil, dashboard IMU):
+#   1. Random broadband noise: potholes, rough asphalt → white noise component
+#   2. Periodic bumps: speed bumps, road joints → sinusoidal component
+#   3. Low-frequency sway: lane changes, road camber → low-freq component
+#
+# Calibrated against PVS dataset (Menegazzo, 2020):
+#   observed heading_rms >> synthetic heading_rms for car class
+#   road_noise_amp chosen so that synthetic heading std ≈ PVS heading std
+#
+# Units: deg/s (same as heading_rate)
+ROAD_NOISE = {
+    'noise_amp':   3.5,    # broadband road noise amplitude [deg/s]
+                           # calibrated: PVS car heading_rms dominated by road surface
+    'bump_amp':    2.0,    # periodic bump amplitude [deg/s]
+    'bump_freq':   1.2,    # bump frequency [Hz] — typical speed bump spacing at 30 km/h
+    'sway_amp':    1.0,    # low-frequency road sway [deg/s]
+    'sway_freq':   0.3,    # sway frequency [Hz]
+}
 
 
 def generate_window(obj_class: str,
@@ -52,6 +76,15 @@ def generate_window(obj_class: str,
     dict with keys:
         obj_class, t, velocity, a_long, a_lat, a_vert,
         omega_z, heading_rate, fs
+
+    Note: Road Surface Noise
+    ------------------------
+    heading_rate and omega_z include a class-independent road surface noise
+    component (broadband + periodic bumps + low-frequency sway). This models
+    the effect of road irregularities on a dashboard-mounted IMU, calibrated
+    against the PVS dataset (Brazil). The noise makes heading-based features
+    less discriminative as absolute values, forcing the classifier to rely on
+    more stable physical features (vib_freq, v_mean, ke_proxy).
     """
     if obj_class not in MOTION_PARAMS:
         raise ValueError(f"Unknown class '{obj_class}'. "
@@ -80,11 +113,24 @@ def generate_window(obj_class: str,
               + 0.5 * va * np.sin(2 * np.pi * vf * 2 * t)   # 2nd harmonic
               + 0.8 * va * rng.standard_normal(N))            # broadband road noise
 
-    # Yaw rate
-    omega_z = np.deg2rad(hs) * rng.standard_normal(N)
+    # Road surface noise — class-independent
+    # Models potholes, road joints, and surface irregularities observed in
+    # dashboard-mounted IMU data (PVS dataset, Brazil).
+    # All vehicle classes experience the same road surface.
+    ph_bump = rng.uniform(0, 2 * np.pi)
+    ph_sway = rng.uniform(0, 2 * np.pi)
 
-    # Heading rate
-    heading_rate = hs * rng.standard_normal(N)
+    road_noise = (
+        ROAD_NOISE['noise_amp'] * rng.standard_normal(N)                              # broadband
+        + ROAD_NOISE['bump_amp'] * np.sin(2 * np.pi * ROAD_NOISE['bump_freq'] * t + ph_bump)   # periodic bumps
+        + ROAD_NOISE['sway_amp'] * np.sin(2 * np.pi * ROAD_NOISE['sway_freq'] * t + ph_sway)   # low-freq sway
+    )
+
+    # Yaw rate: driving dynamics + road surface noise
+    omega_z = np.deg2rad(hs) * rng.standard_normal(N) + np.deg2rad(road_noise)
+
+    # Heading rate: driving dynamics + road surface noise
+    heading_rate = hs * rng.standard_normal(N) + road_noise
 
     return {
         'obj_class':    obj_class,
