@@ -3,7 +3,7 @@ sgi._internal.features
 ──────────────────────
 Feature extraction from GPS+IMU sensor windows.
 
-11 physically motivated features, all computable on edge hardware
+12 physically motivated features, all computable on edge hardware
 (ESP32, Raspberry Pi).
 
 Author: Yahya Akbay | 2025
@@ -20,17 +20,18 @@ DEFAULT_GPS_HZ    = 10    # u-blox NEO-M9N max rate (documented hardware constan
 DEFAULT_WINDOW_S  = 5     # classification window [seconds] (documented hardware constant, not used in computation)
 
 FEATURE_NAMES = [
-    'v_mean',        # mean forward velocity [m/s]
-    'v_std',         # velocity std [m/s]
-    'v_max',         # max velocity [m/s]
-    'a_long_rms',    # longitudinal acceleration RMS [m/s²]
-    'a_lat_rms',     # lateral acceleration RMS [m/s²]
-    'jerk_rms',      # jerk RMS [m/s³]
-    'vib_freq',      # dominant vertical vibration frequency [Hz]
-    'vib_amp',       # vertical vibration PSD peak [m²/s⁴/Hz]
-    'heading_rms',   # heading rate RMS [deg/s]
-    'omega_rms',     # yaw rate RMS [rad/s]
-    'ke_proxy',      # kinetic energy proxy: mean(v²) [m²/s²]
+    'v_mean',           # mean forward velocity [m/s]
+    'v_std',            # velocity std [m/s]
+    'v_max',            # max velocity [m/s]
+    'a_long_rms',       # longitudinal acceleration RMS [m/s²]
+    'a_lat_rms',        # lateral acceleration RMS [m/s²]
+    'jerk_rms',         # jerk RMS [m/s³]
+    'vib_freq',         # dominant vertical vibration frequency [Hz]
+    'vib_amp',          # vertical vibration PSD peak [m²/s⁴/Hz]
+    'heading_rms',      # heading rate RMS [deg/s]
+    'omega_rms',        # yaw rate RMS [rad/s]
+    'ke_proxy',         # kinetic energy proxy: mean(v²) [m²/s²]
+    'vib_freq_ratio',   # truck-band / (car-band + truck-band) — car/truck discriminator
 ]
 
 N_FEATURES = len(FEATURE_NAMES)
@@ -72,7 +73,7 @@ class SGIFeatureExtractor:
 
         Returns
         -------
-        np.ndarray of shape (11,), dtype float32
+        np.ndarray of shape (12,), dtype float32
 
         Note: GPS Velocity
         ------------------
@@ -125,16 +126,33 @@ class SGIFeatureExtractor:
         # Kinetic energy proxy
         ke_proxy = float(np.mean(v**2))
 
+        # vib_freq_ratio: energy ratio truck-band (6-10 Hz) vs car-band (3-7 Hz)
+        # Invariant to broadband road noise — primary car/truck physical discriminator
+        # car engine idle:  4-cyl, ~600 RPM → ~5 Hz  (sits in car-band)
+        # truck engine:     6-cyl, ~800 RPM → ~8 Hz  (sits in truck-band)
+        CAR_BAND   = (3.0,  7.0)   # Hz
+        TRUCK_BAND = (6.0, 10.0)   # Hz
+        _eps = 1e-12
+
+        car_mask   = (freqs >= CAR_BAND[0])   & (freqs <= CAR_BAND[1])
+        truck_mask = (freqs >= TRUCK_BAND[0]) & (freqs <= TRUCK_BAND[1])
+
+        car_energy   = float(np.mean(psd[car_mask]))   if car_mask.any()   else 0.0
+        truck_energy = float(np.mean(psd[truck_mask])) if truck_mask.any() else 0.0
+
+        vib_freq_ratio = truck_energy / (car_energy + truck_energy + _eps)
+
         return np.array([
             v_mean, v_std, v_max,
             a_long_rms, a_lat_rms, jerk_rms,
             vib_freq, vib_amp,
             heading_rms, omega_rms,
             ke_proxy,
+            vib_freq_ratio,       # NEW — index 11
         ], dtype=np.float32)
 
     def extract_batch(self, windows: list) -> np.ndarray:
-        """Extract features from a list of window dicts. Returns (N, 11)."""
+        """Extract features from a list of window dicts. Returns (N, 12)."""
         return np.array([self.extract(w) for w in windows], dtype=np.float32)
 
     def extract_dataframe(self, df) -> np.ndarray:
