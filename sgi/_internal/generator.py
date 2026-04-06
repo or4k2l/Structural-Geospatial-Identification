@@ -28,11 +28,13 @@ import numpy as np
 #   Truck diesel:    6-cyl, 800 RPM         → ~8 Hz
 #   Drone rotor:     DJI Mini series specs   → ~50 Hz
 #   Calibrated against PVS dataset (Menegazzo, 2020) — Brazil, dashboard IMU
+#   car v_mean = 9.5 m/s (34.2 km/h) — direct measurement from PVS GPS speed
+#   (PVS mean GPS speed: 34.5 km/h, n=1500 windows)
 MOTION_PARAMS = {
     #              v_mean  v_std  a_long  a_lat  vib_freq  vib_amp  heading_std  road_noise
     'human':   (   1.4,   0.30,  0.05,  0.03,    1.8,    0.08,     15.0,        0.0),
     'bicycle': (   4.5,   0.80,  0.10,  0.05,    2.5,    0.04,      8.0,        0.5),
-    'car':     (  13.9,   3.50,  0.80,  0.40,    5.0,    0.02,      5.0,        3.0),
+    'car':     (   9.5,   3.50,  0.80,  0.40,    5.0,    0.02,      5.0,        3.0),  # v_mean calibrated to PVS: 34.5 km/h mean
     'truck':   (  11.1,   1.20,  1.40,  0.25,    8.0,    0.08,      1.5,        3.0),
     'drone':   (   8.0,   1.50,  0.60,  0.60,   50.0,    0.03,     25.0,        0.0),
 }

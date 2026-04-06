@@ -230,11 +230,30 @@ class TestGenerator:
         assert np.std(w['a_vert']) > 0.001, \
             f"car a_vert std too low: {np.std(w['a_vert']):.4f} — road noise not modelled"
 
-    def test_truck_speed_lt_car(self):
-        """truck v_mean must be less than car — primary urban speed discriminator"""
+    def test_car_truck_speed_realistic(self):
+        """car and truck v_mean must both be realistic urban speeds (1–20 m/s)"""
         from sgi._internal.generator import MOTION_PARAMS
-        assert MOTION_PARAMS['truck'][0] < MOTION_PARAMS['car'][0], \
-            "truck v_mean should be less than car (urban: truck ~30km/h, car ~50km/h)"
+        car_vm   = MOTION_PARAMS['car'][0]
+        truck_vm = MOTION_PARAMS['truck'][0]
+        assert 1.0 < car_vm < 20.0,   f"car v_mean={car_vm} outside realistic urban range"
+        assert 1.0 < truck_vm < 20.0, f"truck v_mean={truck_vm} outside realistic urban range"
+
+    def test_car_vmean_calibrated(self):
+        """car v_mean must be calibrated to PVS dataset: 9.5 m/s (34.2 km/h)"""
+        from sgi._internal.generator import MOTION_PARAMS
+        assert MOTION_PARAMS['car'][0] == 9.5, (
+            f"car v_mean should be 9.5 m/s (PVS calibrated), got {MOTION_PARAMS['car'][0]}"
+        )
+
+    def test_car_truck_vmean_overlap(self):
+        """car and truck v_mean must be within 5 m/s — speed distributions overlap in reality"""
+        from sgi._internal.generator import MOTION_PARAMS
+        car_vm   = MOTION_PARAMS['car'][0]
+        truck_vm = MOTION_PARAMS['truck'][0]
+        assert abs(car_vm - truck_vm) < 5.0, (
+            f"car ({car_vm}) and truck ({truck_vm}) v_mean too far apart — "
+            "classifier cannot separate them by speed alone"
+        )
 
     def test_truck_vib_amp_gt_car(self):
         """truck a_vert std must exceed car (heavier vehicle, rougher vibration)"""
