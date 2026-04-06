@@ -3,7 +3,7 @@ sgi._internal.features
 ──────────────────────
 Feature extraction from GPS+IMU sensor windows.
 
-12 physically motivated features, all computable on edge hardware
+14 physically motivated features, all computable on edge hardware
 (ESP32, Raspberry Pi).
 
 Author: Yahya Akbay | 2025
@@ -32,6 +32,8 @@ FEATURE_NAMES = [
     'omega_rms',        # yaw rate RMS [rad/s]
     'ke_proxy',         # kinetic energy proxy: mean(v²) [m²/s²]
     'vib_freq_ratio',   # truck-band / (car-band + truck-band) — car/truck discriminator
+    'heading_norm',     # heading_rms / (v_mean + 1.0) — speed-normalized curvature [deg/m]
+    'omega_norm',       # omega_rms   / (v_mean + 1.0) — speed-normalized yaw rate [rad/m]
 ]
 
 N_FEATURES = len(FEATURE_NAMES)
@@ -49,7 +51,7 @@ class SGIFeatureExtractor:
     Usage
     -----
     >>> ext = SGIFeatureExtractor()
-    >>> features = ext.extract(window_dict)   # shape (12,)
+    >>> features = ext.extract(window_dict)   # shape (14,)
     >>> features = ext.extract_dataframe(df)  # from pandas DataFrame
     >>> features = ext.extract_array(arr)     # from numpy array (N×6)
     """
@@ -73,7 +75,7 @@ class SGIFeatureExtractor:
 
         Returns
         -------
-        np.ndarray of shape (12,), dtype float32
+        np.ndarray of shape (14,), dtype float32
 
         Note: GPS Velocity
         ------------------
@@ -142,17 +144,25 @@ class SGIFeatureExtractor:
 
         vib_freq_ratio = truck_energy / (car_energy + truck_energy + _eps)
 
+        # Speed-normalized heading/yaw — curvature proxy invariant to vehicle speed
+        # Removes the speed-dependency that causes high-speed car windows to
+        # resemble low-heading-std synthetic truck profiles
+        heading_norm = heading_rms / (v_mean + 1.0)   # [deg/m] approximate curvature
+        omega_norm   = omega_rms   / (v_mean + 1.0)   # [rad/m] approximate yaw curvature
+
         return np.array([
             v_mean, v_std, v_max,
             a_long_rms, a_lat_rms, jerk_rms,
             vib_freq, vib_amp,
             heading_rms, omega_rms,
             ke_proxy,
-            vib_freq_ratio,       # NEW — index 11
+            vib_freq_ratio,       # index 11
+            heading_norm,         # NEW — index 12
+            omega_norm,           # NEW — index 13
         ], dtype=np.float32)
 
     def extract_batch(self, windows: list) -> np.ndarray:
-        """Extract features from a list of window dicts. Returns (N, 12)."""
+        """Extract features from a list of window dicts. Returns (N, 14)."""
         return np.array([self.extract(w) for w in windows], dtype=np.float32)
 
     def extract_dataframe(self, df) -> np.ndarray:

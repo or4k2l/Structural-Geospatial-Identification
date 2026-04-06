@@ -119,7 +119,7 @@ def generate_dataset(n_per_class: int = 300,
 
     Returns
     -------
-    X : np.ndarray (N_total, 11)
+    X : np.ndarray (N_total, 14)
     y : np.ndarray (N_total,) of str labels
     """
     from sgi._internal.features import SGIFeatureExtractor
