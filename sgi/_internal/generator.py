@@ -19,14 +19,14 @@ import numpy as np
 #   Car engine idle: 4-cyl, 600 RPM              → ~5 Hz
 #   Truck diesel:    6-cyl, 800 RPM              → ~8 Hz
 #   Drone rotor:     DJI Mini series specs        → ~50 Hz
-#   truck v_mean calibrated to urban speed (~30 km/h = 8.3 m/s)
-#   Primary car/truck discriminator: velocity (not vibration amplitude)
+#   car/truck separation: multi-feature (vib_freq + a_long + heading_std + v_std)
+#   Calibrated against PVS dataset (Menegazzo, 2020) — real GPS validation
 
 MOTION_PARAMS = {
     'human':   (1.4,  0.30, 0.05, 0.03, 1.8,  0.08, 15.0),  # unchanged
-    'bicycle': (4.5,  0.80, 0.10, 0.05, 2.5,  0.04,  8.0),  # revert to original 0.04
-    'car':     (13.9, 2.00, 0.80, 0.40, 5.0,  0.02,  5.0),  # revert vib_amp to 0.02
-    'truck':   (8.3,  1.50, 0.40, 0.20, 8.0,  0.08,  2.0),  # v_mean: 16.7→8.3 (30km/h), vib_amp: 0.20→0.08
+    'bicycle': (4.5,  0.80, 0.10, 0.05, 2.5,  0.04,  8.0),  # unchanged
+    'car':     (13.9, 3.50, 0.80, 0.40, 5.0,  0.02,  5.0),  # v_std: 2.00→3.50 (city stop-and-go)
+    'truck':   (11.1, 1.20, 1.40, 0.25, 8.0,  0.08,  1.5),  # v_mean: 8.3→11.1 (40km/h), v_std: 1.50→1.20, a_long: 0.40→1.40, a_lat: 0.20→0.25, heading_std: 2.0→1.5
     'drone':   (8.0,  1.50, 0.60, 0.60, 50.0, 0.03, 25.0),  # unchanged
 }
 

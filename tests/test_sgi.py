@@ -199,6 +199,18 @@ class TestGenerator:
         assert np.std(truck_w['a_vert']) > np.std(car_w['a_vert']), \
             "truck a_vert std should exceed car"
 
+    def test_truck_a_long_gt_car(self):
+        """truck a_long must exceed car — heavier vehicle brakes harder"""
+        from sgi._internal.generator import MOTION_PARAMS
+        assert MOTION_PARAMS['truck'][2] > MOTION_PARAMS['car'][2], \
+            "truck a_long should exceed car (heavier vehicle, longer braking)"
+
+    def test_car_v_std_gt_truck(self):
+        """car v_std must exceed truck — city stop-and-go vs steady truck cruise"""
+        from sgi._internal.generator import MOTION_PARAMS
+        assert MOTION_PARAMS['car'][1] > MOTION_PARAMS['truck'][1], \
+            "car v_std should exceed truck (city stop-and-go vs steady cruise)"
+
 
 # ── Classifier tests ──────────────────────────────────────────────────────────
 
