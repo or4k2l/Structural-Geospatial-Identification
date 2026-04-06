@@ -85,7 +85,7 @@ class TestFeatureExtractor:
         w    = generate_window('human', seed=42)
         feat = self.ext.extract(w)
         assert feat.shape == (len(FEATURE_NAMES),)
-        assert len(FEATURE_NAMES) == 11
+        assert len(FEATURE_NAMES) == 12
 
     def test_output_dtype(self):
         w    = generate_window('car', seed=1)
@@ -133,6 +133,26 @@ class TestFeatureExtractor:
         feat = self.ext.extract(w)
         vib_freq_idx = FEATURE_NAMES.index('vib_freq')
         assert feat[vib_freq_idx] < 10, "Human vib_freq should be <10 Hz"
+
+    def test_vib_freq_ratio_car_lt_truck(self):
+        """car vib_freq_ratio must be lower than truck — core physical discriminator"""
+        ext = SGIFeatureExtractor(fs=100.0)
+        # Average over multiple seeds for stability
+        car_ratios   = [ext.extract(generate_window('car',   seed=i))[-1] for i in range(20)]
+        truck_ratios = [ext.extract(generate_window('truck', seed=i))[-1] for i in range(20)]
+        assert np.mean(car_ratios) < np.mean(truck_ratios), (
+            f"car vib_freq_ratio mean {np.mean(car_ratios):.4f} should be "
+            f"< truck {np.mean(truck_ratios):.4f}"
+        )
+
+    def test_vib_freq_ratio_range(self):
+        """vib_freq_ratio must be in [0, 1] for all classes"""
+        ext = SGIFeatureExtractor(fs=100.0)
+        for cls in DEFAULT_CLASSES:
+            w = generate_window(cls, seed=42)
+            ratio = ext.extract(w)[-1]
+            assert 0.0 <= ratio <= 1.0, \
+                f"{cls} vib_freq_ratio={ratio:.4f} out of [0,1]"
 
     def test_array_input(self):
         """Test numpy array input (N,6)"""
