@@ -255,45 +255,29 @@ class TestGenerator:
         assert MOTION_PARAMS['car'][1] > MOTION_PARAMS['truck'][1], \
             "car v_std should exceed truck (city stop-and-go vs steady cruise)"
 
-    def test_road_noise_class_independent(self):
-        """Road noise amplitude must be identical for car and truck — same road surface"""
-        from sgi._internal.generator import ROAD_NOISE
-        # Verify ROAD_NOISE exists and has required keys
-        required_keys = {'noise_amp', 'bump_amp', 'bump_freq', 'sway_amp', 'sway_freq'}
-        road_noise_keys = set(ROAD_NOISE.keys())
-        assert required_keys.issubset(road_noise_keys), \
-            f"ROAD_NOISE missing keys: {required_keys - road_noise_keys}"
-        # noise_amp must be positive and substantial (>1.0 deg/s)
-        assert ROAD_NOISE['noise_amp'] > 1.0, \
-            "road noise_amp too small — won't affect heading_rms distribution"
+    def test_road_noise_equal_car_truck(self):
+        """car and truck must have equal road_noise_amp — key physical invariant"""
+        from sgi._internal.generator import MOTION_PARAMS
+        car_rn   = MOTION_PARAMS['car'][7]
+        truck_rn = MOTION_PARAMS['truck'][7]
+        assert car_rn == truck_rn, (
+            f"car road_noise_amp ({car_rn}) must equal truck ({truck_rn})"
+        )
+        assert car_rn == 3.0, (
+            f"car/truck road_noise_amp must be 3.0 (calibrated value), got {car_rn}"
+        )
 
-    def test_heading_rms_increased_by_road_noise(self):
-        """heading_rms must be higher with road noise than pure dynamics would produce"""
-        from sgi._internal.generator import ROAD_NOISE, MOTION_PARAMS
-        import numpy as np
-        # For car: heading_std = 5.0, road noise_amp = 3.5
-        # Combined std should be sqrt(5^2 + 3.5^2) ≈ 6.1 > 5.0
-        car_hs = MOTION_PARAMS['car'][6]
-        expected_combined = np.sqrt(car_hs**2 + ROAD_NOISE['noise_amp']**2)
-        assert expected_combined > car_hs, \
-            "road noise must increase effective heading std"
+    def test_road_noise_zero_human_drone(self):
+        """human and drone must have zero road_noise_amp — not in contact with road"""
+        from sgi._internal.generator import MOTION_PARAMS
+        assert MOTION_PARAMS['human'][7] == 0.0
+        assert MOTION_PARAMS['drone'][7] == 0.0
 
-    def test_heading_rms_car_truck_ratio_reduced(self):
-        """
-        With road noise, the car/truck heading_rms ratio should be closer to 1.0
-        than without noise — road noise acts as a leveler between classes.
-        """
-        from sgi._internal.generator import ROAD_NOISE, MOTION_PARAMS
-        import numpy as np
-        car_hs   = MOTION_PARAMS['car'][6]    # 5.0
-        truck_hs = MOTION_PARAMS['truck'][6]  # 1.5
-        noise    = ROAD_NOISE['noise_amp']    # 3.5
-
-        ratio_without_noise = car_hs / truck_hs
-        ratio_with_noise    = np.sqrt(car_hs**2 + noise**2) / np.sqrt(truck_hs**2 + noise**2)
-
-        assert ratio_with_noise < ratio_without_noise, \
-            "road noise should reduce the car/truck heading_rms ratio (leveling effect)"
+    def test_motion_params_tuple_length(self):
+        """All MOTION_PARAMS entries must have exactly 8 columns"""
+        from sgi._internal.generator import MOTION_PARAMS
+        for cls, params in MOTION_PARAMS.items():
+            assert len(params) == 8, f"{cls} has {len(params)} params, expected 8"
 
 
 # ── Classifier tests ──────────────────────────────────────────────────────────
