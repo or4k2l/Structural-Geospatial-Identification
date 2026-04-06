@@ -91,7 +91,9 @@ clf.predict(arr)
 |-----------|--------|
 | **GPS speed is mandatory** | `velocity` must come from real GPS (e.g. u-blox NEO-M9N). Integrated-acceleration proxies degrade vehicle-class accuracy to near-zero. |
 | **IMU-only mode** | Without real GPS speed, only the `human` class is reliably classified (~93%). All vehicle classes (`car`, `truck`, `bicycle`) collapse. |
-| **Synthetic training** | The classifier is trained on synthetic data. Cross-domain performance on real-world data depends on GPS availability. |
+| **Synthetic training** | The classifier is trained on synthetic data. Cross-domain performance on real-world data depends on GPS availability and road surface conditions. |
+| **Dashboard IMU dampens engine frequency** | When the IMU is mounted on the dashboard (not engine mount), motor vibration at 5 Hz (car) and 8 Hz (truck) is attenuated. `vib_freq` becomes unreliable as a car/truck discriminator. |
+| **car vs truck on dashboard IMU** | See PVS Validation section below. Without real truck reference windows from the same road surface, car/truck separation is not achievable with synthetic-only training. |
 
 ### Real-World Validation — Collecty Dataset
 
@@ -114,6 +116,38 @@ the `velocity` field.
 > of smartphone users — Collecty. *Data in Brief*, 109481.
 > <https://doi.org/10.1016/j.dib.2023.109481>
 
+### Real-World Validation — PVS Dataset (Vehicle Classes)
+
+Experiment: SGI-Machine classifier trained on synthetic data (300 samples/class),
+evaluated against the [PVS dataset](https://doi.org/10.1016/j.dib.2019.104863)
+(Brazil, 100 Hz dashboard IMU + 1 Hz GPS, 1,500 `car` windows, mean speed 34.5 km/h).
+
+| Metric | Value |
+|--------|-------|
+| Dataset | PVS — Passive Vehicular Sensors (Menegazzo, 2020) |
+| IMU position | Dashboard (≈ smartphone in windshield mount) |
+| Windows evaluated | 1,500 (all ground-truth `car`) |
+| GPS speed | Real — mean 34.5 km/h, std 25.8 km/h |
+| Training | Synthetic only — 300 samples/class |
+| **car-Accuracy** | **0–21%** (across 8 calibration attempts) |
+| truck misclassification | 67–88% of car windows classified as truck |
+
+**Why car/truck separation fails on dashboard IMU:**
+
+1. **No real truck reference.** PVS contains only car windows — there are no real truck examples from the same road surface. Although the classifier was trained on synthetic truck data, it has never seen a real truck IMU recording from Brazilian roads, making it impossible to validate or calibrate the car/truck discrimination for this domain.
+
+2. **Engine frequency is damped.** The dashboard IMU does not reliably capture the 5 Hz (car) vs 8 Hz (truck) engine signature — road surface broadband noise dominates the vertical acceleration PSD.
+
+3. **Heading/yaw encodes road roughness, not dynamics.** On Brazilian roads, `heading_rms` and `omega_rms` reflect road surface irregularities transmitted through the suspension — not the vehicle's actual turning dynamics. This creates a systematic domain gap vs synthetic training data.
+
+**What is needed for reliable car/truck classification:**
+- Real truck IMU windows from the same road surface and IMU mounting position, OR
+- IMU mounted on engine/drivetrain (not dashboard), OR
+- Additional sensor modality (e.g., acoustic, barometric)
+
+> Menegazzo, J., & von Wangenheim, A. (2020). PVS — Passive Vehicular Sensors Datasets.
+> *Data in Brief*, 104863. <https://doi.org/10.1016/j.dib.2019.104863>
+
 ---
 
 ## Object Classes
@@ -122,8 +156,8 @@ the `velocity` field.
 |-------|------|----------|---------------|
 | `human` | 80 kg | 1.4 m/s | Gait ~1.8 Hz |
 | `bicycle` | 90 kg | 4.5 m/s | Cadence ~2.5 Hz |
-| `car` | 1500 kg | 13.9 m/s | Engine ~5 Hz |
-| `truck` | 15000 kg | 22.2 m/s | Diesel ~8 Hz |
+| `car` | 1500 kg | 9.5 m/s | Engine ~5 Hz |
+| `truck` | 15000 kg | 11.1 m/s | Diesel ~8 Hz |
 | `drone` | 1.5 kg | 8.0 m/s | Rotor ~50 Hz |
 
 ---
@@ -135,13 +169,13 @@ sgi/
 ├── __init__.py          ← public API: train, load, predict, predict_proba, info
 ├── classifier.py        ← SGILightClassifier
 ├── _internal/
-│   ├── features.py      ← SGIFeatureExtractor (11 features)
+│   ├── features.py      ← SGIFeatureExtractor (14 features)
 │   ├── generator.py     ← synthetic GPS+IMU data generator
 │   └── physics.py       ← SGI-Full: K-field, gap analysis (theoretical)
 └── models/
     └── sgi_light_v1.pkl ← bundled pretrained model (after sgi.train().save())
 tests/
-└── test_sgi.py          ← 37 tests, all passing
+└── test_sgi.py          ← 54 tests, all passing
 ```
 
 ---
