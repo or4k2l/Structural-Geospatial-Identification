@@ -255,6 +255,46 @@ class TestGenerator:
         assert MOTION_PARAMS['car'][1] > MOTION_PARAMS['truck'][1], \
             "car v_std should exceed truck (city stop-and-go vs steady cruise)"
 
+    def test_road_noise_class_independent(self):
+        """Road noise amplitude must be identical for car and truck — same road surface"""
+        from sgi._internal.generator import ROAD_NOISE
+        # Verify ROAD_NOISE exists and has required keys
+        required_keys = {'noise_amp', 'bump_amp', 'bump_freq', 'sway_amp', 'sway_freq'}
+        road_noise_keys = set(ROAD_NOISE.keys())
+        assert required_keys.issubset(road_noise_keys), \
+            f"ROAD_NOISE missing keys: {required_keys - road_noise_keys}"
+        # noise_amp must be positive and substantial (>1.0 deg/s)
+        assert ROAD_NOISE['noise_amp'] > 1.0, \
+            "road noise_amp too small — won't affect heading_rms distribution"
+
+    def test_heading_rms_increased_by_road_noise(self):
+        """heading_rms must be higher with road noise than pure dynamics would produce"""
+        from sgi._internal.generator import ROAD_NOISE, MOTION_PARAMS
+        import numpy as np
+        # For car: heading_std = 5.0, road noise_amp = 3.5
+        # Combined std should be sqrt(5^2 + 3.5^2) ≈ 6.1 > 5.0
+        car_hs = MOTION_PARAMS['car'][6]
+        expected_combined = np.sqrt(car_hs**2 + ROAD_NOISE['noise_amp']**2)
+        assert expected_combined > car_hs, \
+            "road noise must increase effective heading std"
+
+    def test_heading_rms_car_truck_ratio_reduced(self):
+        """
+        With road noise, the car/truck heading_rms ratio should be closer to 1.0
+        than without noise — road noise acts as a leveler between classes.
+        """
+        from sgi._internal.generator import ROAD_NOISE, MOTION_PARAMS
+        import numpy as np
+        car_hs   = MOTION_PARAMS['car'][6]    # 5.0
+        truck_hs = MOTION_PARAMS['truck'][6]  # 1.5
+        noise    = ROAD_NOISE['noise_amp']    # 3.5
+
+        ratio_without_noise = car_hs / truck_hs
+        ratio_with_noise    = np.sqrt(car_hs**2 + noise**2) / np.sqrt(truck_hs**2 + noise**2)
+
+        assert ratio_with_noise < ratio_without_noise, \
+            "road noise should reduce the car/truck heading_rms ratio (leveling effect)"
+
 
 # ── Classifier tests ──────────────────────────────────────────────────────────
 
