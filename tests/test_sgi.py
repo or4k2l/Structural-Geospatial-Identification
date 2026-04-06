@@ -85,7 +85,7 @@ class TestFeatureExtractor:
         w    = generate_window('human', seed=42)
         feat = self.ext.extract(w)
         assert feat.shape == (len(FEATURE_NAMES),)
-        assert len(FEATURE_NAMES) == 12
+        assert len(FEATURE_NAMES) == 14
 
     def test_output_dtype(self):
         w    = generate_window('car', seed=1)
@@ -137,9 +137,10 @@ class TestFeatureExtractor:
     def test_vib_freq_ratio_car_lt_truck(self):
         """car vib_freq_ratio must be lower than truck — core physical discriminator"""
         ext = SGIFeatureExtractor(fs=100.0)
+        ratio_idx = FEATURE_NAMES.index('vib_freq_ratio')
         # Average over multiple seeds for stability
-        car_ratios   = [ext.extract(generate_window('car',   seed=i))[-1] for i in range(20)]
-        truck_ratios = [ext.extract(generate_window('truck', seed=i))[-1] for i in range(20)]
+        car_ratios   = [ext.extract(generate_window('car',   seed=i))[ratio_idx] for i in range(20)]
+        truck_ratios = [ext.extract(generate_window('truck', seed=i))[ratio_idx] for i in range(20)]
         assert np.mean(car_ratios) < np.mean(truck_ratios), (
             f"car vib_freq_ratio mean {np.mean(car_ratios):.4f} should be "
             f"< truck {np.mean(truck_ratios):.4f}"
@@ -148,11 +149,34 @@ class TestFeatureExtractor:
     def test_vib_freq_ratio_range(self):
         """vib_freq_ratio must be in [0, 1] for all classes"""
         ext = SGIFeatureExtractor(fs=100.0)
+        ratio_idx = FEATURE_NAMES.index('vib_freq_ratio')
         for cls in DEFAULT_CLASSES:
             w = generate_window(cls, seed=42)
-            ratio = ext.extract(w)[-1]
+            ratio = ext.extract(w)[ratio_idx]
             assert 0.0 <= ratio <= 1.0, \
                 f"{cls} vib_freq_ratio={ratio:.4f} out of [0,1]"
+
+    def test_heading_norm_car_gt_truck(self):
+        """car heading_norm must exceed truck — car makes sharper turns relative to speed"""
+        ext = SGIFeatureExtractor(fs=100.0)
+        norm_idx = FEATURE_NAMES.index('heading_norm')
+        car_norms   = [ext.extract(generate_window('car',   seed=i))[norm_idx] for i in range(20)]
+        truck_norms = [ext.extract(generate_window('truck', seed=i))[norm_idx] for i in range(20)]
+        assert np.mean(car_norms) > np.mean(truck_norms), (
+            f"car heading_norm mean {np.mean(car_norms):.4f} should be "
+            f"> truck {np.mean(truck_norms):.4f}"
+        )
+
+    def test_heading_norm_positive(self):
+        """heading_norm and omega_norm must be non-negative for all classes"""
+        ext = SGIFeatureExtractor(fs=100.0)
+        heading_norm_idx = FEATURE_NAMES.index('heading_norm')
+        omega_norm_idx   = FEATURE_NAMES.index('omega_norm')
+        for cls in DEFAULT_CLASSES:
+            w = generate_window(cls, seed=42)
+            feat = ext.extract(w)
+            assert feat[heading_norm_idx] >= 0.0, f"{cls} heading_norm negative"
+            assert feat[omega_norm_idx]   >= 0.0, f"{cls} omega_norm negative"
 
     def test_array_input(self):
         """Test numpy array input (N,6)"""
